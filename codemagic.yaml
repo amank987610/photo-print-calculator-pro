@@ -1,0 +1,61 @@
+workflows:
+  android-release:
+    name: Photo Print Calculator Pro - Android Release
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      flutter: stable
+      android_signing:
+        - photo_print_calculator_keystore
+      vars:
+        PACKAGE_NAME: "com.shriprinthouse.photoprintcalculator"
+      groups:
+        - google_play  # optional - only needed if you wire up Play Store publishing later
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+      cancel_previous_builds: true
+
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+
+      - name: Generate launcher icons & splash screen
+        script: |
+          flutter pub run flutter_launcher_icons
+          flutter pub run flutter_native_splash:create
+
+      - name: Flutter analyze (non-blocking)
+        script: |
+          flutter analyze || true
+
+      - name: Build signed release APK
+        script: |
+          flutter build apk --release
+
+      - name: Build app bundle (optional, for Play Store)
+        script: |
+          flutter build appbundle --release
+
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/bundle/release/app-release.aab
+      - build/app/outputs/**/mapping.txt
+      - flutter_drive.log
+
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
